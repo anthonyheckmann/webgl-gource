@@ -17,6 +17,8 @@ admin.initializeApp({
 })
 
 const firebaseDB = admin.firestore()
+const settings = {timestampsInSnapshots: true}
+firebaseDB.settings(settings)
 
 // github API
 const GitHubClient = require('./libs/GitHubClient.js').GitHubClient
@@ -142,9 +144,9 @@ const updateRoutine = async function (forceCommitIndex = null) {
     getCommitTotal().then(() => {
     // lookup latest commit in db and load latest nodes/edges structure
       loadLatestCommit().then(() => {
-        if (latestCommit === null && commitTotal === 0) { // nothing in db
+        if (latestCommit === null) { // nothing in db
           currentCommitIndex = 0
-          currentPage = 0
+          currentPage = commitTotal
         } else {
           if (forceCommitIndex !== null) {
             currentPage = commitTotal - forceCommitIndex
@@ -152,6 +154,10 @@ const updateRoutine = async function (forceCommitIndex = null) {
             currentCommitIndex = latestCommit.index + 1
             currentPage = commitTotal - currentCommitIndex
           }
+        }
+
+        if (currentPage < 0) {
+          currentPage = 0
         }
 
         if (currentPage === 0) {
@@ -169,7 +175,7 @@ const updateRoutine = async function (forceCommitIndex = null) {
                 let snapshot = await commitData.get()
 
                 if (latestCommit && latestCommit.sha === commit.sha) {
-                  updateRoutine(true, currentCommitIndex + 1)
+                  updateRoutine(currentCommitIndex + 1)
                   console.log('incrementing commit index')
                   resolve()
                   return
